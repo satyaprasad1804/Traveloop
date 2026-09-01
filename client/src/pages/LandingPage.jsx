@@ -32,7 +32,10 @@ export default function LandingPage() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => {
+              console.log("LOGIN BUTTON CLICKED");
+              navigate('/login');
+            }}
             className="px-5 py-2 rounded-lg border border-slate-600 text-slate-300 hover:border-indigo-500 hover:text-white transition-all text-sm font-medium"
           >
             Sign In
