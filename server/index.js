@@ -53,7 +53,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ── Auto-migrate: ensure trip_notes table exists ──────────────
+// ── Auto-migrate: ensure trip_notes table and role column exist ──────────────
 (async () => {
   try {
     await pool.execute(`
@@ -72,6 +72,16 @@ app.use((err, req, res, next) => {
     console.log('✅  trip_notes table ready');
   } catch (err) {
     console.warn('⚠️  Could not auto-create trip_notes table:', err.message);
+  }
+
+  try {
+    const [cols] = await pool.execute("SHOW COLUMNS FROM users LIKE 'role'");
+    if (cols.length === 0) {
+      await pool.execute("ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'");
+      console.log('✅  role column added to users table');
+    }
+  } catch (err) {
+    console.warn('⚠️  Could not ensure role column on users table:', err.message);
   }
 })();
 

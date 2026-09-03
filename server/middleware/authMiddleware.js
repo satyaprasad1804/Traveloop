@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
 
     // 3. Confirm user still exists in DB (handles deleted / suspended accounts)
     const [rows] = await pool.execute(
-      'SELECT id, name, email, avatar_url, role FROM users WHERE id = ? LIMIT 1',
+      'SELECT * FROM users WHERE id = ? LIMIT 1',
       [decoded.id]
     );
 
@@ -38,7 +38,11 @@ const protect = async (req, res, next) => {
     }
 
     // 4. Attach user to request and continue
-    req.user = rows[0];
+    const user = rows[0];
+    req.user = {
+      ...user,
+      role: user.role || 'user',
+    };
     next();
   } catch (err) {
     const message =
