@@ -4,6 +4,7 @@ require('dotenv').config();
 /**
  * mysql2/promise connection pool.
  * All DB modules import this pool and call pool.query() / pool.execute().
+ * Set DB_SSL=true in .env to enable SSL (required for Aiven / Railway / cloud DBs).
  */
 const pool = mysql.createPool({
   host:               process.env.DB_HOST     || 'localhost',
@@ -12,9 +13,10 @@ const pool = mysql.createPool({
   password:           process.env.DB_PASSWORD || '',
   database:           process.env.DB_NAME     || 'odoo_hackathon',
   waitForConnections: true,
-  connectionLimit:    10,      // max concurrent connections
-  queueLimit:         0,       // unlimited queue
-  timezone:           'Z',     // store/retrieve times as UTC
+  connectionLimit:    10,
+  queueLimit:         0,
+  timezone:           'Z',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : undefined,
 });
 
 module.exports = pool;

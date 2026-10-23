@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
+const fs      = require('fs');
+const path    = require('path');
 const pool    = require('./config/db');
 
 const app  = express();
@@ -53,8 +55,31 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ── Auto-migrate: ensure trip_notes table and role column exist ──────────────
+// ── Auto-migrate: run full schema + extras on startup ────────────────────────
 (async () => {
+  try {
+    const schemaPath = path.join(__dirname, 'db', 'schema.sql');
+    const sql = fs.readFileSync(schemaPath, 'utf8');
+    const statements = sql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !/^(CREATE DATABASE|USE )/i.test(s));
+
+    for (const stmt of statements) {
+      try {
+        await pool.execute(stmt);
+      } catch (err) {
+        if (err.code !== 'ER_TABLE_EXISTS_ERROR' && err.code !== 'ER_DUP_KEYNAME') {
+          console.warn('⚠️  Migration stmt skipped:', err.message);
+        }
+      }
+    }
+    console.log('✅  Schema migration complete');
+  } catch (err) {
+    console.warn('⚠️  Schema migration failed:', err.message);
+  }
+
+  // Ensure trip_notes table (added after initial schema)
   try {
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS trip_notes (
@@ -71,9 +96,10 @@ app.use((err, req, res, next) => {
     `);
     console.log('✅  trip_notes table ready');
   } catch (err) {
-    console.warn('⚠️  Could not auto-create trip_notes table:', err.message);
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('⚠️  trip_notes:', err.message);
   }
 
+  // Ensure role column on users
   try {
     const [cols] = await pool.execute("SHOW COLUMNS FROM users LIKE 'role'");
     if (cols.length === 0) {
@@ -81,7 +107,7 @@ app.use((err, req, res, next) => {
       console.log('✅  role column added to users table');
     }
   } catch (err) {
-    console.warn('⚠️  Could not ensure role column on users table:', err.message);
+    console.warn('⚠️  role column:', err.message);
   }
 })();
 
